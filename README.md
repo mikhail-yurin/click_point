@@ -1,5 +1,8 @@
-# click_point
+# Click_point
 Native mouse click on screen by coordinates from stdin
+
+# Releases
+https://github.com/mikhail-yurin/click_point/releases
 
 ---
 
