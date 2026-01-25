@@ -1,5 +1,9 @@
 use enigo::{Button, Coordinate::Abs, Direction::Click, Enigo, Mouse, Settings};
-use std::io::{self, Read, Write};
+use std::{
+    io::{self, Read, Write},
+    thread::sleep,
+    time::Duration,
+};
 
 fn read_message() -> Option<String> {
     let mut len_buf = [0; 4];
@@ -26,9 +30,12 @@ fn main() {
         let x = parsed.get("x").and_then(|v| v.as_i64()).unwrap();
         let y = parsed.get("y").and_then(|v| v.as_i64()).unwrap();
 
+        println!("click to: [{}, {}]\n", &x, &y);
+
         // mouse manipulation
         let mut enigo = Enigo::new(&Settings::default()).unwrap();
         enigo.move_mouse(x as i32, y as i32, Abs).unwrap();
+        sleep(Duration::from_millis(100));
         enigo.button(Button::Left, Click).unwrap();
 
         // success report
