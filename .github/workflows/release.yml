@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'   # works for push like v1.0.0, v1.2.3 etc.
+      - '*'   # works for tags like 1.0.0, 1.2.3 etc.
 
 permissions:
   contents: write   # for uploading assets
