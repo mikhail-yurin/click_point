@@ -1,6 +1,8 @@
+mod install;
+
 use enigo::{Button, Coordinate::Abs, Direction::Click, Enigo, Mouse, Settings};
 use std::{
-    io::{self, Read, Write},
+    io::{self, IsTerminal, Read, Write},
     thread::sleep,
     time::Duration,
 };
@@ -24,23 +26,32 @@ fn send_message(response: &str) {
 }
 
 fn main() {
+    // Run installer when launched manually (double-click or --install flag).
+    // Chrome calls the binary via a pipe, so stdin won't be a TTY in that case.
+    let is_manual = io::stdin().is_terminal() || std::env::args().any(|a| a == "--install");
+
+    if is_manual {
+        install::install();
+        return;
+    }
+
     if let Some(input) = read_message() {
-        // parsing stdin
         let parsed: serde_json::Value = serde_json::from_str(&input).unwrap_or_default();
-        let x = parsed.get("x").and_then(|v| v.as_i64()).unwrap();
-        let y = parsed.get("y").and_then(|v| v.as_i64()).unwrap();
 
-        println!("click to: [{}, {}]\n", &x, &y);
+        let x = parsed.get("x").and_then(|v| v.as_i64());
+        let y = parsed.get("y").and_then(|v| v.as_i64());
 
-        // mouse manipulation
-        let mut enigo = Enigo::new(&Settings::default()).unwrap();
-        enigo.move_mouse(x as i32, y as i32, Abs).unwrap();
-        sleep(Duration::from_millis(100));
-        enigo.button(Button::Left, Click).unwrap();
-
-        // success report
-        send_message(&format!("clicked to ({}, {})", x, y));
-    } else {
-        eprintln!("No stdin with click coordinates provided");
+        match (x, y) {
+            (Some(x), Some(y)) => {
+                let mut enigo = Enigo::new(&Settings::default()).unwrap();
+                enigo.move_mouse(x as i32, y as i32, Abs).unwrap();
+                sleep(Duration::from_millis(100));
+                enigo.button(Button::Left, Click).unwrap();
+                send_message(&format!("clicked to ({}, {})", x, y));
+            }
+            _ => {
+                send_message("{\"ready\": true}");
+            }
+        }
     }
 }
