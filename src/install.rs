@@ -23,9 +23,7 @@ pub fn install() {
 
 fn do_install() -> Result<Vec<String>, Box<dyn std::error::Error>> {
     let exe_path = std::env::current_exe()?.canonicalize()?;
-    let exe_str = exe_path
-        .to_str()
-        .ok_or("Installation path contains incorrect symbols")?;
+    let exe_str = path_to_str(&exe_path)?;
 
     let manifest = generate_manifest(exe_str);
 
@@ -55,6 +53,16 @@ fn do_install() -> Result<Vec<String>, Box<dyn std::error::Error>> {
     }
 
     Ok(saved_paths)
+}
+
+fn path_to_str(path: &std::path::Path) -> Result<&str, Box<dyn std::error::Error>> {
+    let s = path
+        .to_str()
+        .ok_or("Installation path contains incorrect symbols")?;
+    // canonicalize() on Windows returns \\?\ extended-length paths that browsers reject
+    #[cfg(windows)]
+    let s = s.strip_prefix(r"\\?\").unwrap_or(s);
+    Ok(s)
 }
 
 fn generate_manifest(exe_path: &str) -> String {
@@ -244,15 +252,19 @@ fn show_message(title: &str, message: &str, _is_error: bool) {
 
 #[cfg(windows)]
 fn show_message(title: &str, message: &str, is_error: bool) {
-    let icon = if is_error { 16 } else { 64 }; // MB_ICONERROR | MB_ICONINFORMATION
-    let script = format!(
-        "Add-Type -AssemblyName System.Windows.Forms; \
-         [System.Windows.Forms.MessageBox]::Show('{}', '{}', 'OK', {});",
-        message.replace('\'', "''"),
-        title.replace('\'', "''"),
-        icon,
-    );
-    let _ = std::process::Command::new("powershell")
-        .args(["-NoProfile", "-Command", &script])
-        .status();
+    use std::ffi::OsStr;
+    use std::os::windows::ffi::OsStrExt;
+    use windows::Win32::UI::WindowsAndMessaging::{MessageBoxW, MB_ICONERROR, MB_ICONINFORMATION, MB_OK};
+
+    let to_wide = |s: &str| -> Vec<u16> {
+        OsStr::new(s).encode_wide().chain(std::iter::once(0)).collect()
+    };
+
+    let title_w = to_wide(title);
+    let message_w = to_wide(message);
+    let flags = MB_OK | if is_error { MB_ICONERROR } else { MB_ICONINFORMATION };
+
+    unsafe {
+        let _ = MessageBoxW(None, windows::core::PCWSTR(message_w.as_ptr()), windows::core::PCWSTR(title_w.as_ptr()), flags);
+    }
 }
