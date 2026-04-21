@@ -160,7 +160,7 @@ fn register_windows_registry(
     use winreg::RegKey;
     use winreg::enums::*;
 
-    let manifest_str = manifest_path.to_str().ok_or("Incorrect path to manifest")?;
+    let manifest_str = path_to_str(manifest_path)?;
 
     let hkcu = RegKey::predef(HKEY_CURRENT_USER);
 
