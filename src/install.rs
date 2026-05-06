@@ -48,7 +48,7 @@ fn do_install() -> Result<Vec<String>, Box<dyn std::error::Error>> {
             .ok_or("Cannot get a directory with binary file")?
             .join(format!("{}.json", HOST_NAME));
         fs::write(&manifest_path, &manifest)?;
-        saved_paths.push(manifest_path.to_string_lossy().into_owned());
+        saved_paths.push(path_to_str(&manifest_path)?.to_owned());
         register_windows_registry(&manifest_path)?;
     }
 
@@ -254,17 +254,20 @@ fn show_message(title: &str, message: &str, _is_error: bool) {
 fn show_message(title: &str, message: &str, is_error: bool) {
     use std::ffi::OsStr;
     use std::os::windows::ffi::OsStrExt;
-    use windows::Win32::UI::WindowsAndMessaging::{MessageBoxW, MB_ICONERROR, MB_ICONINFORMATION, MB_OK};
+
+    extern "system" {
+        fn MessageBoxW(hwnd: usize, text: *const u16, caption: *const u16, utype: u32) -> i32;
+    }
 
     let to_wide = |s: &str| -> Vec<u16> {
         OsStr::new(s).encode_wide().chain(std::iter::once(0)).collect()
     };
 
-    let title_w = to_wide(title);
     let message_w = to_wide(message);
-    let flags = MB_OK | if is_error { MB_ICONERROR } else { MB_ICONINFORMATION };
+    let title_w = to_wide(title);
+    let icon: u32 = if is_error { 0x10 } else { 0x40 }; // MB_ICONERROR | MB_ICONINFORMATION
 
     unsafe {
-        let _ = MessageBoxW(None, windows::core::PCWSTR(message_w.as_ptr()), windows::core::PCWSTR(title_w.as_ptr()), flags);
+        MessageBoxW(0, message_w.as_ptr(), title_w.as_ptr(), icon); // MB_OK = 0x0
     }
 }
