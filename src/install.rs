@@ -255,7 +255,7 @@ fn show_message(title: &str, message: &str, is_error: bool) {
     use std::ffi::OsStr;
     use std::os::windows::ffi::OsStrExt;
 
-    extern "system" {
+    unsafe extern "system" {
         fn MessageBoxW(hwnd: usize, text: *const u16, caption: *const u16, utype: u32) -> i32;
     }
 
